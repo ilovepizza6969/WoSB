@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>World of Sea Battle (Early Access) — DPS Comparator</title>
+  <style>
+    :root {
+      --bg: #0b1220; --panel: #121b2e; --muted: #8aa0c7; --text: #e9f0ff;
+      --accent: #5aa2ff; --accent-2: #9bffd1; --chip: #1a2540; --border: #21304a;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:#000;color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial}
+    .wrap{max-width:1100px;margin:40px auto;padding:0 20px}
+    h1{font-weight:800;letter-spacing:.3px;margin:0 0 16px;font-size:28px}
+    .subtitle{color:var(--muted);margin-bottom:22px}
+
+    .panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px;box-shadow:0 10px 30px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.02)}
+    .row{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+    .group{display:flex;flex-wrap:wrap;gap:8px;padding:10px;background:var(--chip);border-radius:12px;border:1px solid var(--border)}
+    .group-title{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-right:8px}
+
+    .btn{cursor:pointer;user-select:none;border:1px solid var(--border);background:linear-gradient(180deg,#17243f,#15223b);color:var(--text);padding:8px 12px;border-radius:10px;font-weight:600;transition:transform .06s ease,background .2s ease,border-color .2s ease,box-shadow .2s ease;position:relative}
+    .btn:hover{transform:translateY(-1px);border-color:#2b416a}
+    .btn.active{background:linear-gradient(180deg,#1b7cff,#0f5ed1);border-color:#67a4ff;box-shadow:0 0 0 2px rgba(26,140,255,.25),0 6px 18px rgba(14,97,255,.25);color:#f4f9ff}
+    .btn.active::after{content:"";position:absolute;inset:auto 8px -6px 8px;height:4px;border-radius:4px;background:linear-gradient(90deg,var(--accent),var(--accent-2));opacity:.9}
+
+    .table-wrap{margin-top:16px;overflow-x:auto;border-radius:14px;border:1px solid var(--border)}
+    table{width:100%;border-collapse:collapse;min-width:880px}
+    thead th{position:sticky;top:0;background:#17223b;color:#cfe0ff;text-align:left;font-size:12px;letter-spacing:.4px;text-transform:uppercase;padding:12px;border-bottom:1px solid var(--border)}
+    tbody td{padding:12px;border-bottom:1px dashed #1e2b45}
+    tbody tr:hover{background:rgba(90,162,255,.08)}
+    .num{text-align:right;font-variant-numeric:tabular-nums}
+
+    .note{color:var(--muted);font-size:13px;margin-top:10px}
+    .badge{display:inline-block;padding:2px 8px;border-radius:999px;background:#1a304f;border:1px solid #27476f;color:#cfe0ff;font-size:12px}
+    .footer{color:var(--muted);font-size:12px;margin-top:16px}
+
+    /* Winner / Runner-up */
+    tbody tr.winner{background:radial-gradient(1200px 120px at 10% 0%,rgba(155,255,209,.10),transparent),rgba(14,26,49,.6);outline:2px solid var(--accent-2);box-shadow:0 0 0 2px rgba(155,255,209,.25) inset,0 12px 28px rgba(0,0,0,.35)}
+    tbody tr.runnerup{background:radial-gradient(1200px 120px at 10% 0%,rgba(210,218,230,.10),transparent),rgba(14,18,32,.55);outline:2px solid #b6c3d8;box-shadow:0 0 0 2px rgba(182,195,216,.18) inset,0 10px 22px rgba(0,0,0,.28)}
+    .winner-badge,.runner-badge{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;margin-left:8px;border-radius:999px;font-size:12px;font-weight:700}
+    .winner-badge{background:linear-gradient(180deg,#1d3b2f,#184b3b);border:1px solid #3eb98d;color:#c8ffe8}
+    .runner-badge{background:linear-gradient(180deg,#262b34,#2e3644);border:1px solid #9fb2cc;color:#e7eef9}
+    .emoji.silver-cup{filter:grayscale(1) brightness(1.2)}
+
+    /* Deciding column visuals */
+    .decide{position:relative}
+    .sort-pill{display:inline-flex;align-items:center;gap:6px;margin-left:8px;padding:2px 8px;border-radius:999px;background:linear-gradient(180deg,#1a2b4b,#14233f);border:1px solid #33507d;color:#d4e6ff;font-size:11px;letter-spacing:.2px}
+    .sort-pill:before{content:"⬇"}
+    .meter{position:relative;display:inline-block;min-width:150px;padding-left:8px}
+    .meter-bar{position:relative;height:10px;border-radius:999px;background:#14223b;border:1px solid #2b3e63;overflow:hidden}
+    .meter-fill{height:100%;background:linear-gradient(90deg,#4ee3a3,#2fb6ff);box-shadow:0 0 12px rgba(79,226,164,.35) inset}
+    .meter-val{display:block;text-align:right;font-variant-numeric:tabular-nums;margin-top:6px;font-weight:700}
+
+    /* Sparkline */
+    .mini{width:220px}
+    .mini svg{width:100%;height:34px;display:block}
+    .mini .axis{stroke:#2a3c60;stroke-width:1}
+    .mini .line{fill:none;stroke:#9bffd1;stroke-width:2;filter:drop-shadow(0 1px 0 rgba(0,0,0,.4))}
+    .mini .area{fill:rgba(155,255,209,.12)}
+  /* First column wider + no wrap to keep badges on one line */
+    table th:first-child, table td:first-child { min-width: 320px; white-space: nowrap; }
+  .explain { margin-top: 40px; background: rgba(18,27,46,.7); border: 1px solid var(--border); border-radius: 14px; padding: 0; box-shadow: 0 8px 20px rgba(0,0,0,.25); overflow: hidden; }
+    .explain summary { cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: #0d1730; color: #cfe0ff; border-bottom: 1px solid #1a2746; font-weight: 700; }
+    .explain summary::-webkit-details-marker { display: none; }
+    .explain .caret { width: 10px; height: 10px; border: 2px solid #6b8dc7; border-top: 0; border-left: 0; transform: rotate(45deg); transition: transform .2s ease; }
+    .explain[open] .caret { transform: rotate(225deg); }
+    .explain .body { padding: 16px; }
+    .explain h2 { display: none; }
+    .explain h3 { margin: 16px 0 6px; font-size: 15px; color: #d7e6ff; }
+    .explain p, .explain li { color: #c3cdea; line-height: 1.55; }
+    .explain h2 { margin: 0 0 8px; font-size: 20px; }
+    .explain h3 { margin: 18px 0 6px; font-size: 16px; color: #d7e6ff; }
+    .explain p, .explain li { color: #cfdaf3; line-height: 1.5; }
+    .eq { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; background: #0f1a32; border: 1px solid #1f3050; padding: 6px 8px; border-radius: 8px; display: inline-block; }
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; background: #16274a; border: 1px solid #2b416a; padding: 2px 6px; border-radius: 6px; }
+  /* Hierarchy tweaks for stronger table focus */
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.02); }
+    .table-wrap { margin-top: 16px; overflow-x: auto; border-radius: 14px; border: 1px solid var(--border); }
+
+    /* Collapsible explanation styles */
+    .explain { margin-top: 40px; background: #0e1526; border: 1px solid #1a2a46; border-radius: 14px; padding: 0; box-shadow: 0 8px 20px rgba(0,0,0,.25); overflow: hidden; }
+    .explain summary { cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: #0f1a32; color: #d9e6ff; border-bottom: 1px solid #182746; font-weight: 700; }
+    .explain summary::-webkit-details-marker { display: none; }
+    .explain .caret { width: 10px; height: 10px; border: 2px solid #7fa4e8; border-top: 0; border-left: 0; transform: rotate(45deg); transition: transform .2s ease; }
+    .explain[open] .caret { transform: rotate(225deg); }
+    .explain .body { padding: 16px; }
+    .explain h2 { display: none; }
+    .explain h3 { margin: 16px 0 6px; font-size: 15px; color: #d7e6ff; }
+    .explain p, .explain li { color: #c3cdea; line-height: 1.55; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>World of Sea Battle (Early Access)</h1>
+    <div class="subtitle">Compare cannon damage over a 60‑second window. Formula: <span class="badge">damage = max(0, penetration − armor)</span>, shots/60s = <span class="badge">60 ÷ reload</span>.</div>
+
+    <div class="panel">
+      <div class="row">
+        <div class="group" id="shipGroup" role="group" aria-label="Ship selector">
+          <div class="group-title">Ship</div>
+          <button class="btn active" data-ship="" aria-pressed="true">All Cannons</button>
+          <button class="btn" data-ship="Black Wind" aria-pressed="false">Black Wind</button>
+          <button class="btn" data-ship="Essex" aria-pressed="false">Essex</button>
+          <button class="btn" data-ship="Anson" aria-pressed="false">Anson</button>
+        </div>
+        <div class="group" id="sizeGroup" role="group" aria-label="Cannon size selector">
+          <div class="group-title">Cannon Size</div>
+          <button class="btn active" data-size="Light" aria-pressed="true">Light</button>
+          <button class="btn" data-size="Medium" aria-pressed="false">Medium</button>
+          <button class="btn" data-size="Heavy" aria-pressed="false">Heavy</button>
+        </div>
+        <div class="group" id="armorGroup" role="group" aria-label="Armor selector">
+          <div class="group-title">Target Armor</div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table id="resultTable" aria-live="polite">
+          <thead><tr id="theadRow"></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="note">The table updates instantly when you change <em>Ship</em>, <em>Cannon Size</em>, or <em>Target Armor</em>. Rows are sorted by the right‑most column.</div>
+    </div>
+
+    <details class="explain" aria-labelledby="math-title">
+      <summary><span class="caret"></span> 📘 How the numbers are calculated (click to expand)</summary>
+      <div class="body">
+        <h2 id="math-title">How the numbers are calculated</h2>
+        <p>This tool compares cannons by their expected damage output over a fixed 60‑second window. It assumes every shot hits and there are no crits or damage falloff.</p>
+
+        <h3>1) Damage per shot</h3>
+        <p>The base damage is penetration minus armor, never below zero:</p>
+        <p class="eq">damage_per_shot = max(0, penetration − armor)</p>
+
+        <h3>2) Shots per 60 seconds</h3>
+        <p>We include fractional last shots, exactly matching your rule (e.g., 6 s left on a 12 s reload counts as <span class="kbd">0.5</span> shot):</p>
+        <p class="eq">shots_in_60s = 60 ÷ reload_time_seconds</p>
+
+        <h3>3) Damage over 60 seconds (deciding column)</h3>
+        <p>This is the key comparison metric and the table is sorted by it:</p>
+        <p class="eq">damage_in_60s = damage_per_shot × shots_in_60s</p>
+        <p>Equivalently, the per‑second rate is <span class="eq">DPS = (penetration − armor) ÷ reload_time</span>, and <span class="eq">damage_in_60s = DPS × 60</span>.</p>
+
+        <h3>4) Examples</h3>
+        <ul>
+          <li><strong>8‑pdr cannon vs armor 7</strong>: penetration = 14, reload = 9 s.<br>
+            <span class="eq">damage_per_shot = 14 − 7 = 7</span>,
+            <span class="eq">shots_in_60s = 60/9 = 6.6667</span>,
+            <span class="eq">damage_in_60s = 7 × 6.6667 = 46.67</span>.
+          </li>
+          <li><strong>6‑pdr rusty vs armor 2</strong>: penetration = 13, reload = 10.5 s.<br>
+            <span class="eq">damage_per_shot = 13 − 2 = 11</span>,
+            <span class="eq">shots_in_60s = 60/10.5 = 5.7143</span>,
+            <span class="eq">damage_in_60s = 11 × 5.7143 = 62.86</span>.
+          </li>
+        </ul>
+
+        <h3>5) Modes and what they show</h3>
+        <ul>
+          <li><strong>Numeric armor (2–15)</strong>: computes the exact minute‑damage at the chosen armor. Winner/runner‑up are crowned for this single armor value.</li>
+          <li><strong>Small Ships</strong> (armor 2–5): aggregates performance across four armor values (2,3,4,5). It shows a sparkline, total wins, and the average minute‑damage (deciding column).</li>
+          <li><strong>Medium Ships</strong> (armor 6–10): aggregates performance across five armor values (6,7,8,9,10). It shows a sparkline, total wins, and the average minute‑damage (deciding column).</li>
+          <li><strong>Heavy Ships</strong> (armor 11–15): aggregates performance across five armor values (11,12,13,14,15). It shows a sparkline, total wins, and the average minute‑damage (deciding column).</li>
+          <li><strong>All‑Around</strong> (armor 2–15): like Small Ships, but averaged across 2…15. The table is sorted by that average.</li>
+        </ul>
+
+        <h3>6) Tie handling & decimals</h3>
+        <ul>
+          <li><strong>Wins</strong> counts ties as full wins for all tied cannons (can switch to half‑wins on request).</li>
+          <li>All calcs keep full precision; the table displays 2 decimals (or 4 for Shots/60s).</li>
+        </ul>
+
+        <h3>7) Assumptions & limits</h3>
+        <ul>
+          <li>No misses, crits, overheating, or ammo limits; reloads are constant.</li>
+          <li>Damage is linear with penetration minus armor; negatives clamp to zero.</li>
+          <li>Window is 60 s; changing it scales results proportionally.</li>
+        </ul>
+      </div>
+    </details>
+
+    <div class="footer">Tip: faster reload shines at low armor; at higher armor, bigger penetration can catch up.</div>
+  </div>
+
+  <script>
+    // === Data ================================================================
+    const DATA = {
+      Light: [
+        { name: '6-pdr rusty', penetration: 13, reload: 10.5 },
+        { name: '6-pdr culverin', penetration: 14, reload: 15.5 },
+        { name: '12-pdr carronade', penetration: 20, reload: 22 },
+        { name: '8-pdr cannon', penetration: 14, reload: 9 },
+        { name: '8-pdr culverin', penetration: 15, reload: 13 },
+        { name: '16-pdr carronade', penetration: 21.5, reload: 19.5 },
+      ],
+      Medium: [
+        { name: '16-pdr cannon', penetration: 14, reload: 12 },
+        { name: '16-pdr culverin', penetration: 15, reload: 17.5 },
+        { name: '24-pdr carronade', penetration: 21.5, reload: 25.5 },
+        { name: '18-pdr cannon', penetration: 15, reload: 10.5 },
+        { name: '18-pdr long cannon', penetration: 16, reload: 15 },
+        { name: '28-pdr carronade', penetration: 23, reload: 22.5 },
+        { name: '20-pdr admiral', penetration: 17, reload: 13.5 },
+        { name: '22-pdr Scorcher', penetration: 19, reload: 26 },
+        { name: '32-pdr Stormbringer', penetration: 25.5, reload: 27.5 },
+      ],
+      Heavy: [
+        { name: '32-pdr cannon', penetration: 17.5, reload: 12 },
+        { name: '32-pdr long cannon', penetration: 18.5, reload: 17.5 },
+        { name: '42-pdr carronade', penetration: 27, reload: 26 },
+        { name: '36-pdr inrog', penetration: 20, reload: 16 },
+        { name: '38-pdr jericho', penetration: 22, reload: 30.5 },
+        { name: '48-pdr colossus', penetration: 30, reload: 32 },
+      ]
+    };
+
+    const SHIPS = {
+      'Black Wind': { cannons: 16, size: 'Light' },
+      'Essex': { cannons: 21, size: 'Medium' },
+      'Anson': { cannons: 30, size: 'Medium' }
+    };
+
+    // === State ===============================================================
+    let state = { ship: '', size: 'Light', armor: 'small' }; // default Small Ships
+
+    // === Utils ===============================================================
+    const clamp0 = x => Math.max(0, x);
+    const shotsPer60 = reload => 60 / reload; // fractional allowed
+    const damagePerShot = (pen, armor) => clamp0(pen - armor);
+    const damagePer60 = (pen, armor, reload) => damagePerShot(pen, armor) * shotsPer60(reload);
+    const fmt = (n, d=2) => Number.isFinite(n) ? n.toFixed(d) : '-';
+
+    // === Build Armor Buttons ================================================
+    const armorGroup = document.getElementById('armorGroup');
+    function buildArmorButtons(){
+      armorGroup.querySelectorAll('button.btn, .line-break').forEach(b=>b.remove());
+      
+      // First line: Grouping buttons
+      const smallBtn=document.createElement('button');
+      smallBtn.className='btn'+(state.armor==='small'?' active':'');
+      smallBtn.setAttribute('aria-pressed',state.armor==='small'?'true':'false');
+      smallBtn.textContent='Small Ships';
+      smallBtn.dataset.armor='small';
+      armorGroup.appendChild(smallBtn);
+
+      const mediumBtn=document.createElement('button');
+      mediumBtn.className='btn'+(state.armor==='medium'?' active':'');
+      mediumBtn.setAttribute('aria-pressed',state.armor==='medium'?'true':'false');
+      mediumBtn.textContent='Medium Ships';
+      mediumBtn.dataset.armor='medium';
+      armorGroup.appendChild(mediumBtn);
+
+      const heavyBtn=document.createElement('button');
+      heavyBtn.className='btn'+(state.armor==='heavy'?' active':'');
+      heavyBtn.setAttribute('aria-pressed',state.armor==='heavy'?'true':'false');
+      heavyBtn.textContent='Heavy Ships';
+      heavyBtn.dataset.armor='heavy';
+      armorGroup.appendChild(heavyBtn);
+
+      const allBtn=document.createElement('button');
+      allBtn.className='btn'+(state.armor==='all'?' active':'');
+      allBtn.setAttribute('aria-pressed',state.armor==='all'?'true':'false');
+      allBtn.textContent='All‑Around';
+      allBtn.dataset.armor='all';
+      armorGroup.appendChild(allBtn);
+
+      // Line break to force numbers to next line
+      const lineBreak=document.createElement('div');
+      lineBreak.className='line-break';
+      lineBreak.style.width='100%';
+      lineBreak.style.flexBasis='100%';
+      armorGroup.appendChild(lineBreak);
+
+      // Second line: Number buttons
+      for(let a=2;a<=15;a++){
+        const b=document.createElement('button');
+        const isActive=a===state.armor;
+        b.className='btn'+(isActive?' active':'');
+        b.setAttribute('aria-pressed',isActive?'true':'false');
+        b.textContent=String(a);
+        b.dataset.armor=String(a);
+        armorGroup.appendChild(b);
+      }
+    }
+
+    // === Event Delegation for Groups ========================================
+    function wireExclusiveGroup(el, dataAttr, onChange){
+      el.addEventListener('click',e=>{
+        const btn=e.target.closest('.btn');
+        if(!btn||!el.contains(btn))return;
+        const val=btn.dataset[dataAttr];
+        if(val==null)return;
+        el.querySelectorAll('.btn').forEach(x=>{x.classList.remove('active');x.setAttribute('aria-pressed','false');});
+        btn.classList.add('active');
+        btn.setAttribute('aria-pressed','true');
+        onChange(val);
+      });
+    }
+
+    wireExclusiveGroup(document.getElementById('sizeGroup'),'size',val=>{ 
+      if(!state.ship) { // Only allow size change if no ship is selected
+        state.size=val; 
+        renderTable(); 
+      }
+    });
+    wireExclusiveGroup(armorGroup,'armor',val=>{
+      if(val==='all') state.armor='all'; 
+      else if(val==='small') state.armor='small';
+      else if(val==='medium') state.armor='medium';
+      else if(val==='heavy') state.armor='heavy';
+      else state.armor=parseInt(val,10);
+      renderTable();
+    });
+    wireExclusiveGroup(document.getElementById('shipGroup'),'ship',val=>{
+      state.ship=val;
+      if(val){
+        // Ship selected: lock size and default to small armor
+        state.size=SHIPS[val].size;
+        if(typeof state.armor==='number' || state.armor==='all' || state.armor==='medium' || state.armor==='heavy'){
+          state.armor='small';
+        }
+      }
+      renderTable();
+    });
+
+    // === Render ==============================================================
+    function renderTable(){
+      buildArmorButtons();
+      // Update ship selector buttons
+      const shipGroup=document.getElementById('shipGroup');
+      shipGroup.querySelectorAll('.btn').forEach(btn=>{
+        const btnShip=btn.dataset.ship;
+        const isActive=(state.ship||'')===(btnShip||'');
+        btn.classList.toggle('active',isActive);
+        btn.setAttribute('aria-pressed',isActive?'true':'false');
+      });
+      // Update cannon size buttons based on ship selection
+      const sizeGroup=document.getElementById('sizeGroup');
+      sizeGroup.querySelectorAll('.btn').forEach(btn=>{
+        const btnSize=btn.dataset.size;
+        const isLocked=state.ship && SHIPS[state.ship].size!==btnSize;
+        if(isLocked){
+          btn.classList.add('locked');
+          btn.style.opacity='0.5';
+          btn.style.cursor='not-allowed';
+        }else{
+          btn.classList.remove('locked');
+          btn.style.opacity='';
+          btn.style.cursor='';
+        }
+        const isActive=state.size===btnSize;
+        btn.classList.toggle('active',isActive);
+        btn.setAttribute('aria-pressed',isActive?'true':'false');
+      });
+
+      const tbody=document.querySelector('#resultTable tbody');
+      const theadRow=document.getElementById('theadRow');
+      tbody.innerHTML='';
+
+      const shipMultiplier=state.ship?SHIPS[state.ship].cannons:1;
+      const shipLabel=state.ship?`${state.ship} (${shipMultiplier} Cannons) — `:'';
+
+      // Aggregate modes
+      if(state.armor==='all' || state.armor==='small' || state.armor==='medium' || state.armor==='heavy'){
+        let armorStart, armorEnd;
+        if(state.armor==='small'){ armorStart=2; armorEnd=5; }
+        else if(state.armor==='medium'){ armorStart=6; armorEnd=10; }
+        else if(state.armor==='heavy'){ armorStart=11; armorEnd=15; }
+        else{ armorStart=2; armorEnd=15; } // all
+        const armors=Array.from({length:armorEnd-armorStart+1},(_,i)=>armorStart+i);
+
+        const dmgLabel=state.ship?'Avg Ship DPS / 60s':'Avg Dmg / 60s';
+        theadRow.innerHTML=`
+          <th style="min-width:320px;">Cannon</th>
+          <th class="num">Penetration</th>
+          <th class="num">Reload (s)</th>
+          <th class="mini">Dmg Curve ${armorStart}→${armorEnd}</th><th class="num">${shipLabel}${dmgLabel} (Armor ${armorStart}–${armorEnd}) <span class="sort-pill">sorted</span></th>`;
+
+        const items=DATA[state.size].map(it=>({...it}));
+        const dmgMatrix=items.map(it=>armors.map(a=>damagePer60(it.penetration,a,it.reload)*shipMultiplier));
+        const bestPerArmor=armors.map((_,idx)=>Math.max(...dmgMatrix.map(row=>row[idx])));
+
+        const rows=items.map((it,idx)=>{
+          const arr=dmgMatrix[idx];
+          const avg=arr.reduce((s,x)=>s+x,0)/arr.length;
+          let wins=0; for(let i=0;i<arr.length;i++){ if(Math.abs(arr[i]-bestPerArmor[i])<1e-9) wins++; }
+          return {name:it.name, pen:it.penetration, reload:it.reload, avg, wins, arr};
+        }).sort((a,b)=>b.avg-a.avg);
+
+        const spark=(vals)=>{
+          const w=200,h=28,max=Math.max(...vals)||1;
+          const pts=vals.map((v,i)=>{const x=(i/(vals.length-1))*(w-2)+1; const y=h-(v/max)*(h-4)-2; return `${x.toFixed(1)},${y.toFixed(1)}`;}).join(' ');
+          const area=`1,${h-2} ${pts} ${w-1},${h-2}`;
+          return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline class="axis" points="1,${h-2} ${w-1},${h-2}"></polyline><polygon class="area" points="${area}"></polygon><polyline class="line" points="${pts}"></polyline></svg>`;
+        };
+
+        const maxAvg=rows.length?rows[0].avg:1;
+        const meterAvg=(val)=>{ const pct=Math.max(0,Math.min(100,(val/maxAvg)*100)); return `<div class="meter"><div class="meter-bar"><div class="meter-fill" style="width:${pct.toFixed(1)}%;"></div></div><span class="meter-val">${fmt(val,2)}</span></div>`; };
+
+        rows.forEach((r,i)=>{
+          const tr=document.createElement('tr');
+          if(i===0) tr.classList.add('winner');
+          if(i===1) tr.classList.add('runnerup');
+          const nameCell=`${r.name}${i===0? ' <span class="winner-badge" title="Best all-around across armor '+armorStart+'–'+armorEnd+'"><span class="emoji">🌊</span> Best Winner</span>' : i===1? ' <span class="runner-badge" title="Second best all-around"><span class="emoji silver-cup">🏆</span> Second Best Winner</span>' : ''}`;
+          tr.innerHTML=`
+            <td>${nameCell}</td>
+            <td class="num">${fmt(r.pen,2)}</td>
+            <td class="num">${fmt(r.reload,2)}</td>
+            <td class="mini">${spark(r.arr)}</td><td class="num decide">${meterAvg(r.avg)}</td>`;
+          tbody.appendChild(tr);
+        });
+        return; // done
+      }
+
+      // Single-armor mode
+      const dmgLabel=state.ship?'Ship DPS / 60s':'Damage / 60s';
+      theadRow.innerHTML=`
+        <th style="min-width:320px;">Cannon</th>
+        <th class="num">Penetration</th>
+        <th class="num">Reload (s)</th>
+        <th class="num">Shots / 60s</th>
+        <th class="num">Damage / Shot</th>
+        <th class="num">${shipLabel}${dmgLabel} <span class="sort-pill">sorted</span></th>`;
+
+      const rows=DATA[state.size].map(it=>{
+        const s60=shotsPer60(it.reload);
+        const dpshot=damagePerShot(it.penetration,state.armor);
+        const d60=dpshot*s60*shipMultiplier;
+        return {name:it.name, pen:it.penetration, reload:it.reload, s60, dpshot, d60};
+      }).sort((a,b)=>b.d60-a.d60);
+
+      const maxD=rows.length?rows[0].d60:1;
+      const meter=(val)=>{ const pct=Math.max(0,Math.min(100,(val/maxD)*100)); return `<div class="meter"><div class="meter-bar"><div class="meter-fill" style="width:${pct.toFixed(1)}%;"></div></div><span class="meter-val">${fmt(val,2)}</span></div>`; };
+
+      rows.forEach((r,i)=>{
+        const tr=document.createElement('tr');
+        if(i===0) tr.classList.add('winner');
+        if(i===1) tr.classList.add('runnerup');
+        const nameCell=`${r.name}${i===0? ' <span class="winner-badge" title="Top damage in 60s"><span class="emoji">🏆</span> Best Winner</span>' : i===1? ' <span class="runner-badge" title="Second best in 60s"><span class="emoji silver-cup">🏆</span> Second Best Winner</span>' : ''}`;
+        tr.innerHTML=`
+          <td>${nameCell}</td>
+          <td class="num">${fmt(r.pen,2)}</td>
+          <td class="num">${fmt(r.reload,2)}</td>
+          <td class="num">${fmt(r.s60,4)}</td>
+          <td class="num">${fmt(r.dpshot,2)}</td>
+          <td class="num decide">${meter(r.d60)}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Init
+    buildArmorButtons();
+    renderTable();
+  </script>
+</body>
+</html>
