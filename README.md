@@ -2,6 +2,8 @@
 
 A web-based tool for comparing ship cannon damage output in **World of Sea Battle (Early Access)**. Compare cannons by their expected damage over a 60-second window, with support for different ship types and armor configurations. Features an interactive PvP front-load damage analysis graph.
 
+🔗 **Live Demo**: [https://ilovepizza6969.github.io/WoSB/](https://ilovepizza6969.github.io/WoSB/)
+
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
 ## Features
