@@ -1,6 +1,6 @@
-# World of Sea Battle — DPS Comparator
+# World of Sea Battle — DPS Comparator v1.2
 
-A web-based tool for comparing ship cannon damage output in **World of Sea Battle (Early Access)**. Compare cannons by their expected damage over a 60-second window, with support for different ship types and armor configurations.
+A web-based tool for comparing ship cannon damage output in **World of Sea Battle (Early Access)**. Compare cannons by their expected damage over a 60-second window, with support for different ship types and armor configurations. Features an interactive PvP front-load damage analysis graph.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
@@ -8,6 +8,11 @@ A web-based tool for comparing ship cannon damage output in **World of Sea Battl
 
 - **Cannon Comparison**: Compare cannons across Light, Medium, and Heavy categories
 - **Ship-Based DPS**: Calculate total ship DPS by multiplying cannon DPS by ship cannon count
+- **PvP Front-Load Damage Analysis**: Interactive graph showing cumulative damage over 60 seconds
+  - Step function visualization (horizontal lines = cooldown, vertical lines = shots)
+  - Compare burst damage potential across all cannons
+  - Independent controls for ship, cannon size, and target armor
+  - Legend shows total damage at 60 seconds
 - **Multiple Armor Modes**: 
   - Individual armor values (2-15)
   - Small Ships (armor 2-5)
@@ -23,11 +28,25 @@ A web-based tool for comparing ship cannon damage output in **World of Sea Battl
 
 ## Supported Ships
 
+Ships are organized into two classes for visual organization. Ship class has no relationship to cannon size capabilities.
+
+### Combat Class
 | Ship | Cannons | Cannon Size |
 |------|---------|-------------|
 | **Black Wind** | 16 | Light |
-| **Essex** | 21 | Medium |
-| **Anson** | 30 | Medium |
+| **Essex** | 21 | Medium, Light |
+| **Anson** | 30 | Medium, Light |
+| **Sans Pareil** | 38 | Heavy, Medium, Light |
+| **Victory** | 49 | Heavy, Medium, Light |
+
+### Heavy Class
+| Ship | Cannons | Cannon Size |
+|------|---------|-------------|
+| **San Martin** | 20 | Light |
+| **Constitution** | 26 | Medium, Light |
+| **Bellona** | 35 | Medium, Light |
+| **Redoutable** | 43 | Heavy, Medium, Light |
+| **Apostolov** | 59 | Heavy, Medium, Light |
 
 ## How It Works
 
@@ -58,14 +77,16 @@ ship_dps = damage_in_60s × number_of_cannons
 
 ## Usage
 
+### Comparison Table
+
 1. **Select a Ship** (optional):
    - Choose "All Cannons" to compare cannons without ship context
-   - Select a specific ship (Black Wind, Essex, or Anson) to see total ship DPS
-   - When a ship is selected, the cannon size is automatically locked to the ship's allowed size
+   - Select a specific ship to see total ship DPS (ships are organized by Combat and Heavy classes)
+   - When a ship is selected, the cannon size is automatically locked to the ship's allowed sizes
 
 2. **Choose Cannon Size**:
    - Light, Medium, or Heavy
-   - Automatically locked when a ship is selected
+   - Automatically restricted to allowed sizes when a ship is selected
 
 3. **Select Target Armor**:
    - Click individual armor values (2-15) for specific comparisons
@@ -76,6 +97,17 @@ ship_dps = damage_in_60s × number_of_cannons
    - Winner and runner-up are highlighted
    - Visual meters show relative performance
    - Sparklines show damage curves across armor ranges
+
+### PvP Front-Load Damage Graph
+
+1. **Select Ship, Cannon Size, and Target Armor**: Independent controls specific to the graph
+2. **View the Graph**:
+   - X-axis: Time from 0-60 seconds
+   - Y-axis: Cumulative damage
+   - Horizontal lines: Reload/cooldown periods (no shots fired)
+   - Vertical lines: Shots fired (damage increases)
+   - Steeper lines = faster front-load damage = better for quick PvP bursts
+3. **Legend**: Shows final damage values at 60 seconds, sorted by total damage
 
 ## Installation
 

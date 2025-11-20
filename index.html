@@ -59,6 +59,18 @@
     .mini .axis{stroke:#2a3c60;stroke-width:1}
     .mini .line{fill:none;stroke:#9bffd1;stroke-width:2;filter:drop-shadow(0 1px 0 rgba(0,0,0,.4))}
     .mini .area{fill:rgba(155,255,209,.12)}
+
+    /* Damage Graph */
+    #damageGraph svg { display: block; }
+    .graph-axis { stroke: #3a4f75; stroke-width: 1.5; }
+    .graph-grid { stroke: #1e2d47; stroke-width: 1; stroke-dasharray: 2,2; }
+    .graph-line { fill: none; stroke-width: 2.5; filter: drop-shadow(0 2px 4px rgba(0,0,0,.3)); transition: stroke-width 0.2s; }
+    .graph-line:hover { stroke-width: 3.5; }
+    .graph-label { fill: var(--muted); font-size: 11px; font-family: Inter, ui-sans-serif, system-ui; }
+    .graph-title { fill: var(--text); font-size: 12px; font-weight: 600; font-family: Inter, ui-sans-serif, system-ui; }
+    .graph-legend { font-size: 11px; font-family: Inter, ui-sans-serif, system-ui; }
+    .graph-legend-item { cursor: pointer; opacity: 1; transition: opacity 0.2s; }
+    .graph-legend-item.hidden { opacity: 0.3; }
   /* First column wider + no wrap to keep badges on one line */
     table th:first-child, table td:first-child { min-width: 320px; white-space: nowrap; }
   .explain { margin-top: 40px; background: rgba(18,27,46,.7); border: 1px solid var(--border); border-radius: 14px; padding: 0; box-shadow: 0 8px 20px rgba(0,0,0,.25); overflow: hidden; }
@@ -93,17 +105,13 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>World of Sea Battle (Early Access) - DPS Comparator v1.1</h1>
+    <h1>World of Sea Battle (Early Access) - DPS Comparator v1.2</h1>
     <div class="subtitle">Compare cannon damage over a 60‑second window. Formula: <span class="badge">damage = max(0, penetration − armor)</span>, shots/60s = <span class="badge">60 ÷ reload</span>.</div>
 
     <div class="panel">
       <div class="row">
         <div class="group" id="shipGroup" role="group" aria-label="Ship selector">
           <div class="group-title">Ship</div>
-          <button class="btn active" data-ship="" aria-pressed="true">All Cannons</button>
-          <button class="btn" data-ship="Black Wind" aria-pressed="false">Black Wind</button>
-          <button class="btn" data-ship="Essex" aria-pressed="false">Essex</button>
-          <button class="btn" data-ship="Anson" aria-pressed="false">Anson</button>
         </div>
         <div class="group" id="sizeGroup" role="group" aria-label="Cannon size selector">
           <div class="group-title">Cannon Size</div>
@@ -124,6 +132,31 @@
       </div>
 
       <div class="note">The table updates instantly when you change <em>Ship</em>, <em>Cannon Size</em>, or <em>Target Armor</em>. Rows are sorted by the right‑most column.</div>
+    </div>
+
+    <div class="panel" style="margin-top: 20px;">
+      <h3 style="margin: 0 0 16px; font-size: 18px; color: var(--text);">⚔️ PvP Front-Load Damage Analysis</h3>
+      <div class="subtitle" style="margin-bottom: 16px; color: var(--muted);">Compare cumulative damage over time (0-60s) to see which cannons deliver the fastest burst damage.</div>
+      
+      <div class="row">
+        <div class="group" id="pvpShipGroup" role="group" aria-label="PvP Ship selector">
+          <div class="group-title">Ship</div>
+        </div>
+        <div class="group" id="pvpSizeGroup" role="group" aria-label="PvP Cannon size selector">
+          <div class="group-title">Cannon Size</div>
+          <button class="btn active" data-pvp-size="Light" aria-pressed="true">Light</button>
+          <button class="btn" data-pvp-size="Medium" aria-pressed="false">Medium</button>
+          <button class="btn" data-pvp-size="Heavy" aria-pressed="false">Heavy</button>
+        </div>
+        <div class="group" id="pvpArmorGroup" role="group" aria-label="PvP Armor selector">
+          <div class="group-title">Target Armor</div>
+        </div>
+      </div>
+
+      <div id="pvpDamageGraph" style="width: 100%; height: 450px; background: var(--chip); border-radius: 12px; border: 1px solid var(--border); padding: 16px; margin-top: 16px;">
+        <svg id="pvpGraphSvg" style="width: 100%; height: 100%;"></svg>
+      </div>
+      <div class="note" style="margin-top: 10px;">Shows cumulative damage accumulation from 0-60 seconds. Steeper curves indicate faster front-load damage, better for quick PvP engagements.</div>
     </div>
 
     <details class="explain" aria-labelledby="math-title">
@@ -219,13 +252,21 @@
     };
 
     const SHIPS = {
-      'Black Wind': { cannons: 16, size: 'Light' },
-      'Essex': { cannons: 21, size: 'Medium' },
-      'Anson': { cannons: 30, size: 'Medium' }
+      'Black Wind': { cannons: 16, sizes: ['Light'], class: 'Combat' },
+      'Essex': { cannons: 21, sizes: ['Medium', 'Light'], class: 'Combat' },
+      'Anson': { cannons: 30, sizes: ['Medium', 'Light'], class: 'Combat' },
+      'Sans Pareil': { cannons: 38, sizes: ['Heavy', 'Medium', 'Light'], class: 'Combat' },
+      'Victory': { cannons: 49, sizes: ['Heavy', 'Medium', 'Light'], class: 'Combat' },
+      'San Martin': { cannons: 20, sizes: ['Light'], class: 'Heavy' },
+      'Constitution': { cannons: 26, sizes: ['Medium', 'Light'], class: 'Heavy' },
+      'Bellona': { cannons: 35, sizes: ['Medium', 'Light'], class: 'Heavy' },
+      'Redoutable': { cannons: 43, sizes: ['Heavy', 'Medium', 'Light'], class: 'Heavy' },
+      'Apostolov': { cannons: 59, sizes: ['Heavy', 'Medium', 'Light'], class: 'Heavy' }
     };
 
     // === State ===============================================================
     let state = { ship: '', size: 'Light', armor: 'small' }; // default Small Ships
+    let pvpState = { ship: '', size: 'Light', armor: 5 }; // PvP section state (default armor 5 for medium ships)
 
     // === Utils ===============================================================
     const clamp0 = x => Math.max(0, x);
@@ -287,6 +328,175 @@
       }
     }
 
+    // === Build Ship Buttons ================================================
+    const shipGroup = document.getElementById('shipGroup');
+    function buildShipButtons(){
+      shipGroup.querySelectorAll('button.btn, .line-break, .class-label').forEach(b=>b.remove());
+      
+      // "All Cannons" button
+      const allCannonsBtn=document.createElement('button');
+      allCannonsBtn.className='btn'+(state.ship===''?' active':'');
+      allCannonsBtn.setAttribute('aria-pressed',state.ship===''?'true':'false');
+      allCannonsBtn.textContent='All Cannons';
+      allCannonsBtn.dataset.ship='';
+      shipGroup.appendChild(allCannonsBtn);
+
+      // Line break
+      const lineBreak1=document.createElement('div');
+      lineBreak1.className='line-break';
+      lineBreak1.style.width='100%';
+      lineBreak1.style.flexBasis='100%';
+      shipGroup.appendChild(lineBreak1);
+
+      // Combat class label
+      const combatLabel=document.createElement('span');
+      combatLabel.className='class-label';
+      combatLabel.style.fontSize='12px';
+      combatLabel.style.textTransform='uppercase';
+      combatLabel.style.letterSpacing='1px';
+      combatLabel.style.color='var(--muted)';
+      combatLabel.style.marginRight='8px';
+      combatLabel.textContent='Combat:';
+      shipGroup.appendChild(combatLabel);
+
+      // Combat class ships in order: Black Wind, Essex, Anson, Sans Pareil, Victory
+      const combatShips=['Black Wind','Essex','Anson','Sans Pareil','Victory'];
+      combatShips.forEach(shipName=>{
+        const btn=document.createElement('button');
+        const isActive=state.ship===shipName;
+        btn.className='btn'+(isActive?' active':'');
+        btn.setAttribute('aria-pressed',isActive?'true':'false');
+        btn.textContent=shipName;
+        btn.dataset.ship=shipName;
+        shipGroup.appendChild(btn);
+      });
+
+      // Line break
+      const lineBreak2=document.createElement('div');
+      lineBreak2.className='line-break';
+      lineBreak2.style.width='100%';
+      lineBreak2.style.flexBasis='100%';
+      shipGroup.appendChild(lineBreak2);
+
+      // Heavy class label
+      const heavyLabel=document.createElement('span');
+      heavyLabel.className='class-label';
+      heavyLabel.style.fontSize='12px';
+      heavyLabel.style.textTransform='uppercase';
+      heavyLabel.style.letterSpacing='1px';
+      heavyLabel.style.color='var(--muted)';
+      heavyLabel.style.marginRight='8px';
+      heavyLabel.textContent='Heavy:';
+      shipGroup.appendChild(heavyLabel);
+
+      // Heavy class ships in order: San Martin, Constitution, Bellona, Redoutable, Apostolov
+      const heavyShips=['San Martin','Constitution','Bellona','Redoutable','Apostolov'];
+      heavyShips.forEach(shipName=>{
+        const btn=document.createElement('button');
+        const isActive=state.ship===shipName;
+        btn.className='btn'+(isActive?' active':'');
+        btn.setAttribute('aria-pressed',isActive?'true':'false');
+        btn.textContent=shipName;
+        btn.dataset.ship=shipName;
+        shipGroup.appendChild(btn);
+      });
+    }
+
+    // === Build PvP Ship Buttons ============================================
+    const pvpShipGroup = document.getElementById('pvpShipGroup');
+    function buildPvpShipButtons(){
+      pvpShipGroup.querySelectorAll('button.btn, .line-break, .class-label').forEach(b=>b.remove());
+      
+      // "All Cannons" button
+      const allCannonsBtn=document.createElement('button');
+      allCannonsBtn.className='btn'+(pvpState.ship===''?' active':'');
+      allCannonsBtn.setAttribute('aria-pressed',pvpState.ship===''?'true':'false');
+      allCannonsBtn.textContent='All Cannons';
+      allCannonsBtn.dataset.pvpShip='';
+      allCannonsBtn.setAttribute('data-pvp-ship', '');
+      pvpShipGroup.appendChild(allCannonsBtn);
+
+      // Line break
+      const lineBreak1=document.createElement('div');
+      lineBreak1.className='line-break';
+      lineBreak1.style.width='100%';
+      lineBreak1.style.flexBasis='100%';
+      pvpShipGroup.appendChild(lineBreak1);
+
+      // Combat class label
+      const combatLabel=document.createElement('span');
+      combatLabel.className='class-label';
+      combatLabel.style.fontSize='12px';
+      combatLabel.style.textTransform='uppercase';
+      combatLabel.style.letterSpacing='1px';
+      combatLabel.style.color='var(--muted)';
+      combatLabel.style.marginRight='8px';
+      combatLabel.textContent='Combat:';
+      pvpShipGroup.appendChild(combatLabel);
+
+      // Combat class ships
+      const combatShips=['Black Wind','Essex','Anson','Sans Pareil','Victory'];
+      combatShips.forEach(shipName=>{
+        const btn=document.createElement('button');
+        const isActive=pvpState.ship===shipName;
+        btn.className='btn'+(isActive?' active':'');
+        btn.setAttribute('aria-pressed',isActive?'true':'false');
+        btn.textContent=shipName;
+        btn.dataset.pvpShip=shipName;
+        btn.setAttribute('data-pvp-ship', shipName);
+        pvpShipGroup.appendChild(btn);
+      });
+
+      // Line break
+      const lineBreak2=document.createElement('div');
+      lineBreak2.className='line-break';
+      lineBreak2.style.width='100%';
+      lineBreak2.style.flexBasis='100%';
+      pvpShipGroup.appendChild(lineBreak2);
+
+      // Heavy class label
+      const heavyLabel=document.createElement('span');
+      heavyLabel.className='class-label';
+      heavyLabel.style.fontSize='12px';
+      heavyLabel.style.textTransform='uppercase';
+      heavyLabel.style.letterSpacing='1px';
+      heavyLabel.style.color='var(--muted)';
+      heavyLabel.style.marginRight='8px';
+      heavyLabel.textContent='Heavy:';
+      pvpShipGroup.appendChild(heavyLabel);
+
+      // Heavy class ships
+      const heavyShips=['San Martin','Constitution','Bellona','Redoutable','Apostolov'];
+      heavyShips.forEach(shipName=>{
+        const btn=document.createElement('button');
+        const isActive=pvpState.ship===shipName;
+        btn.className='btn'+(isActive?' active':'');
+        btn.setAttribute('aria-pressed',isActive?'true':'false');
+        btn.textContent=shipName;
+        btn.dataset.pvpShip=shipName;
+        btn.setAttribute('data-pvp-ship', shipName);
+        pvpShipGroup.appendChild(btn);
+      });
+    }
+
+    // === Build PvP Armor Buttons ============================================
+    const pvpArmorGroup = document.getElementById('pvpArmorGroup');
+    function buildPvpArmorButtons(){
+      pvpArmorGroup.querySelectorAll('button.btn').forEach(b=>b.remove());
+      
+      // Create buttons for armor values 2-15
+      for(let a=2;a<=15;a++){
+        const b=document.createElement('button');
+        const isActive=a===pvpState.armor;
+        b.className='btn'+(isActive?' active':'');
+        b.setAttribute('aria-pressed',isActive?'true':'false');
+        b.textContent=String(a);
+        b.dataset.pvpArmor=String(a);
+        b.setAttribute('data-pvp-armor', String(a));
+        pvpArmorGroup.appendChild(b);
+      }
+    }
+
     // === Event Delegation for Groups ========================================
     function wireExclusiveGroup(el, dataAttr, onChange){
       el.addEventListener('click',e=>{
@@ -302,7 +512,7 @@
     }
 
     wireExclusiveGroup(document.getElementById('sizeGroup'),'size',val=>{ 
-      if(!state.ship) { // Only allow size change if no ship is selected
+      if(!state.ship || (state.ship && SHIPS[state.ship].sizes.includes(val))) { // Allow size change if no ship selected or if size is allowed for selected ship
         state.size=val; 
         renderTable(); 
       }
@@ -318,8 +528,11 @@
     wireExclusiveGroup(document.getElementById('shipGroup'),'ship',val=>{
       state.ship=val;
       if(val){
-        // Ship selected: lock size and default to small armor
-        state.size=SHIPS[val].size;
+        // Ship selected: set size to first allowed size if current size not allowed, default to small armor
+        const allowedSizes=SHIPS[val].sizes;
+        if(!allowedSizes.includes(state.size)){
+          state.size=allowedSizes[0];
+        }
         if(typeof state.armor==='number' || state.armor==='all' || state.armor==='medium' || state.armor==='heavy'){
           state.armor='small';
         }
@@ -327,22 +540,39 @@
       renderTable();
     });
 
+    // PvP Section Event Handlers
+    wireExclusiveGroup(document.getElementById('pvpSizeGroup'),'pvpSize',val=>{ 
+      if(!pvpState.ship || (pvpState.ship && SHIPS[pvpState.ship].sizes.includes(val))) {
+        pvpState.size=val; 
+        renderPvpGraph(); 
+      }
+    });
+    wireExclusiveGroup(pvpArmorGroup,'pvpArmor',val=>{
+      pvpState.armor=parseInt(val,10);
+      renderPvpGraph();
+    });
+    wireExclusiveGroup(pvpShipGroup,'pvpShip',val=>{
+      pvpState.ship=val;
+      if(val){
+        const allowedSizes=SHIPS[val].sizes;
+        if(!allowedSizes.includes(pvpState.size)){
+          pvpState.size=allowedSizes[0];
+        }
+      }
+      buildPvpShipButtons();
+      renderPvpGraph();
+    });
+
+    // === Render Damage Graph ================================================
     // === Render ==============================================================
     function renderTable(){
       buildArmorButtons();
-      // Update ship selector buttons
-      const shipGroup=document.getElementById('shipGroup');
-      shipGroup.querySelectorAll('.btn').forEach(btn=>{
-        const btnShip=btn.dataset.ship;
-        const isActive=(state.ship||'')===(btnShip||'');
-        btn.classList.toggle('active',isActive);
-        btn.setAttribute('aria-pressed',isActive?'true':'false');
-      });
+      buildShipButtons();
       // Update cannon size buttons based on ship selection
       const sizeGroup=document.getElementById('sizeGroup');
       sizeGroup.querySelectorAll('.btn').forEach(btn=>{
         const btnSize=btn.dataset.size;
-        const isLocked=state.ship && SHIPS[state.ship].size!==btnSize;
+        const isLocked=state.ship && !SHIPS[state.ship].sizes.includes(btnSize);
         if(isLocked){
           btn.classList.add('locked');
           btn.style.opacity='0.5';
@@ -452,9 +682,320 @@
       });
     }
 
+    // === Update PvP Size Buttons ==========================================
+    function updatePvpSizeButtons(){
+      const pvpSizeGroup = document.getElementById('pvpSizeGroup');
+      pvpSizeGroup.querySelectorAll('.btn').forEach(btn=>{
+        const btnSize = btn.dataset.pvpSize;
+        const isLocked = pvpState.ship && !SHIPS[pvpState.ship].sizes.includes(btnSize);
+        if(isLocked){
+          btn.classList.add('locked');
+          btn.style.opacity='0.5';
+          btn.style.cursor='not-allowed';
+        }else{
+          btn.classList.remove('locked');
+          btn.style.opacity='';
+          btn.style.cursor='';
+        }
+        const isActive = pvpState.size === btnSize;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-pressed', isActive?'true':'false');
+      });
+    }
+
+    // === Render PvP Front-Load Graph ======================================
+    function renderPvpGraph(){
+      updatePvpSizeButtons();
+      const svg = document.getElementById('pvpGraphSvg');
+      if(!svg) return;
+      
+      svg.innerHTML = '';
+      
+      // Get container dimensions
+      const container = document.getElementById('pvpDamageGraph');
+      const width = container ? container.clientWidth : 800;
+      const height = 450;
+      
+      // Set SVG viewBox and dimensions
+      svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+      svg.setAttribute('width', width);
+      svg.setAttribute('height', height);
+      const margin = { top: 20, right: 140, bottom: 50, left: 70 };
+      const graphWidth = width - margin.left - margin.right;
+      const graphHeight = height - margin.top - margin.bottom;
+      
+      const cannons = DATA[pvpState.size] || [];
+      const shipMultiplier = pvpState.ship ? SHIPS[pvpState.ship].cannons : 1;
+      const armor = pvpState.armor;
+      
+      // Calculate cumulative damage over time for each cannon
+      const timePoints = Array.from({length: 601}, (_, i) => i / 10); // 0 to 60 seconds, 0.1s increments
+      const cannonData = cannons.map(cannon => {
+        const dpshot = damagePerShot(cannon.penetration, armor);
+        const cumulativeDamage = timePoints.map(time => {
+          // Calculate how many shots have fired by this time
+          // First shot fires at time 0, then subsequent shots at reload intervals
+          // Formula: shotsFired = Math.floor(time / reload) + 1
+          // At time 0: Math.floor(0/reload) + 1 = 0 + 1 = 1 shot
+          // At time 9: Math.floor(9/9) + 1 = 1 + 1 = 2 shots
+          // At time 18: Math.floor(18/9) + 1 = 2 + 1 = 3 shots
+          const shotsFired = Math.floor(time / cannon.reload) + 1;
+          
+          // Calculate damage from shots fired
+          let totalDamage = shotsFired * dpshot;
+          // If ship selected, multiply by number of cannons
+          if(pvpState.ship) {
+            totalDamage *= shipMultiplier;
+          }
+          return totalDamage;
+        });
+        return {
+          name: cannon.name,
+          penetration: cannon.penetration,
+          reload: cannon.reload,
+          dpshot: dpshot,
+          cumulativeDamage: cumulativeDamage
+        };
+      });
+      
+      // Find max damage for scaling
+      const maxDamage = Math.max(...cannonData.flatMap(c => c.cumulativeDamage), 1);
+      
+      // Scale functions
+      const xScale = (time) => margin.left + (time / 60) * graphWidth;
+      const yScale = (damage) => margin.top + graphHeight - (damage / maxDamage) * graphHeight;
+      
+      // Create SVG group for clipping
+      const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+      const clipPath = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+      clipPath.setAttribute('id', 'pvpGraphClip');
+      const clipRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      clipRect.setAttribute('x', margin.left);
+      clipRect.setAttribute('y', margin.top);
+      clipRect.setAttribute('width', graphWidth);
+      clipRect.setAttribute('height', graphHeight);
+      clipPath.appendChild(clipRect);
+      defs.appendChild(clipPath);
+      svg.appendChild(defs);
+      
+      // Grid lines
+      const gridGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      gridGroup.setAttribute('class', 'grid-group');
+      
+      // Horizontal grid lines (damage)
+      for(let i = 0; i <= 10; i++) {
+        const y = margin.top + (i / 10) * graphHeight;
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('class', 'graph-grid');
+        line.setAttribute('x1', margin.left);
+        line.setAttribute('y1', y);
+        line.setAttribute('x2', width - margin.right);
+        line.setAttribute('y2', y);
+        gridGroup.appendChild(line);
+      }
+      
+      // Vertical grid lines (time - every 10 seconds)
+      for(let i = 0; i <= 6; i++) {
+        const time = i * 10;
+        const x = xScale(time);
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('class', 'graph-grid');
+        line.setAttribute('x1', x);
+        line.setAttribute('y1', margin.top);
+        line.setAttribute('x2', x);
+        line.setAttribute('y2', height - margin.bottom);
+        gridGroup.appendChild(line);
+      }
+      
+      svg.appendChild(gridGroup);
+      
+      // Axes
+      const axesGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      axesGroup.setAttribute('class', 'axes-group');
+      
+      // X-axis (time)
+      const xAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      xAxis.setAttribute('class', 'graph-axis');
+      xAxis.setAttribute('x1', margin.left);
+      xAxis.setAttribute('y1', height - margin.bottom);
+      xAxis.setAttribute('x2', width - margin.right);
+      xAxis.setAttribute('y2', height - margin.bottom);
+      axesGroup.appendChild(xAxis);
+      
+      // Y-axis (damage)
+      const yAxis = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      yAxis.setAttribute('class', 'graph-axis');
+      yAxis.setAttribute('x1', margin.left);
+      yAxis.setAttribute('y1', margin.top);
+      yAxis.setAttribute('x2', margin.left);
+      yAxis.setAttribute('y2', height - margin.bottom);
+      axesGroup.appendChild(yAxis);
+      
+      svg.appendChild(axesGroup);
+      
+      // Axis labels
+      const labelsGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      labelsGroup.setAttribute('class', 'labels-group');
+      
+      // X-axis labels (time - every 10 seconds)
+      for(let i = 0; i <= 6; i++) {
+        const time = i * 10;
+        const x = xScale(time);
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('class', 'graph-label');
+        text.setAttribute('x', x);
+        text.setAttribute('y', height - margin.bottom + 20);
+        text.setAttribute('text-anchor', 'middle');
+        text.textContent = time + 's';
+        labelsGroup.appendChild(text);
+      }
+      
+      // Y-axis labels (damage values)
+      for(let i = 0; i <= 10; i++) {
+        const damage = (maxDamage / 10) * (10 - i);
+        const y = margin.top + (i / 10) * graphHeight;
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('class', 'graph-label');
+        text.setAttribute('x', margin.left - 10);
+        text.setAttribute('y', y + 4);
+        text.setAttribute('text-anchor', 'end');
+        text.textContent = fmt(damage, 0);
+        labelsGroup.appendChild(text);
+      }
+      
+      // Axis titles
+      const xTitle = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      xTitle.setAttribute('class', 'graph-title');
+      xTitle.setAttribute('x', width / 2);
+      xTitle.setAttribute('y', height - 10);
+      xTitle.setAttribute('text-anchor', 'middle');
+      xTitle.textContent = 'Time (seconds)';
+      labelsGroup.appendChild(xTitle);
+      
+      const yTitle = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      yTitle.setAttribute('class', 'graph-title');
+      yTitle.setAttribute('x', 20);
+      yTitle.setAttribute('y', height / 2);
+      yTitle.setAttribute('text-anchor', 'middle');
+      yTitle.setAttribute('transform', `rotate(-90, 20, ${height / 2})`);
+      yTitle.textContent = pvpState.ship ? 'Cumulative Ship Damage' : 'Cumulative Damage';
+      labelsGroup.appendChild(yTitle);
+      
+      svg.appendChild(labelsGroup);
+      
+      // Color palette for lines - 15 distinct colors for all cannons
+      const colors = [
+        '#5aa2ff', // Blue
+        '#9bffd1', // Cyan
+        '#ff9b5a', // Orange
+        '#ff5a9b', // Pink
+        '#9b5aff', // Purple
+        '#5aff9b', // Green
+        '#ffeb3b', // Yellow
+        '#ff6b6b', // Red
+        '#4ecdc4', // Teal
+        '#95e1d3', // Mint
+        '#f38181', // Coral
+        '#aa96da', // Lavender
+        '#fcbad3', // Light Pink
+        '#ffffd2', // Cream
+        '#a8e6cf'  // Seafoam
+      ];
+      
+      // Draw step lines for each cannon (cumulative damage)
+      const linesGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      linesGroup.setAttribute('clip-path', 'url(#pvpGraphClip)');
+      
+      cannonData.forEach((cannon, idx) => {
+        const color = colors[idx % colors.length];
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('class', 'graph-line');
+        path.setAttribute('stroke', color);
+        path.setAttribute('data-cannon', cannon.name);
+        
+        // Create step function path (cumulative damage increases at each shot)
+        // First shot fires at time 0, so start at that damage value
+        let pathData = '';
+        const initialDamage = cannon.cumulativeDamage[0];
+        pathData += `M ${xScale(0)} ${yScale(initialDamage)} `;
+        
+        // For each time point, draw horizontal line then step up when damage increases
+        for(let i = 1; i < timePoints.length; i++) {
+          const time = timePoints[i];
+          const damage = cannon.cumulativeDamage[i];
+          const prevDamage = cannon.cumulativeDamage[i-1];
+          const x = xScale(time);
+          const y = yScale(damage);
+          
+          if(damage > prevDamage) {
+            // Damage increased (shot fired) - step up vertically first, then continue horizontally
+            pathData += `L ${x} ${yScale(prevDamage)} L ${x} ${y} `;
+          } else {
+            // No change - continue horizontally
+            pathData += `L ${x} ${y} `;
+          }
+        }
+        
+        path.setAttribute('d', pathData);
+        path.setAttribute('stroke-linecap', 'round');
+        path.setAttribute('stroke-linejoin', 'round');
+        linesGroup.appendChild(path);
+      });
+      
+      svg.appendChild(linesGroup);
+      
+      // Legend with final damage values at 60s
+      const legendGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      legendGroup.setAttribute('class', 'legend-group');
+      
+      const legendX = width - margin.right + 10;
+      let legendY = margin.top + 20;
+      
+      // Sort by final damage (60s) for legend
+      const sortedCannons = [...cannonData].sort((a, b) => 
+        b.cumulativeDamage[b.cumulativeDamage.length - 1] - 
+        a.cumulativeDamage[a.cumulativeDamage.length - 1]
+      );
+      
+      sortedCannons.forEach((cannon, idx) => {
+        const originalIdx = cannonData.findIndex(c => c.name === cannon.name);
+        const color = colors[originalIdx % colors.length];
+        const finalDamage = cannon.cumulativeDamage[cannon.cumulativeDamage.length - 1];
+        
+        // Legend line
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', legendX);
+        line.setAttribute('y1', legendY);
+        line.setAttribute('x2', legendX + 20);
+        line.setAttribute('y2', legendY);
+        line.setAttribute('stroke', color);
+        line.setAttribute('stroke-width', '2.5');
+        line.setAttribute('data-cannon', cannon.name);
+        legendGroup.appendChild(line);
+        
+        // Legend text with final damage
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('class', 'graph-legend');
+        text.setAttribute('x', legendX + 25);
+        text.setAttribute('y', legendY + 4);
+        text.setAttribute('fill', 'var(--text)');
+        text.setAttribute('data-cannon', cannon.name);
+        text.textContent = `${cannon.name} (${fmt(finalDamage, 0)} @ 60s)`;
+        legendGroup.appendChild(text);
+        
+        legendY += 18;
+      });
+      
+      svg.appendChild(legendGroup);
+    }
+
     // Init
     buildArmorButtons();
+    buildShipButtons();
+    buildPvpShipButtons();
+    buildPvpArmorButtons();
     renderTable();
+    renderPvpGraph();
   </script>
 </body>
 </html>
