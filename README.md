@@ -1,4 +1,4 @@
-# World of Sea Battle — DPS Comparator v1.2
+# World of Sea Battle — DPS Comparator v1.3
 
 A web-based tool for comparing ship cannon damage output in **World of Sea Battle (Early Access)**. Compare cannons by their expected damage over a 60-second window, with support for different ship types and armor configurations. Features an interactive PvP front-load damage analysis graph.
 
@@ -10,6 +10,7 @@ A web-based tool for comparing ship cannon damage output in **World of Sea Battl
 
 - **Cannon Comparison**: Compare cannons across Light, Medium, and Heavy categories
 - **Ship-Based DPS**: Calculate total ship DPS by multiplying cannon DPS by ship cannon count
+- **Boarding Damage**: View total boarding damage per cannon configuration (multiplied by ship's cannon count)
 - **PvP Front-Load Damage Analysis**: Interactive graph showing cumulative damage over 60 seconds
   - Step function visualization (horizontal lines = cooldown, vertical lines = shots)
   - Compare burst damage potential across all cannons
@@ -150,6 +151,7 @@ The tool includes data for:
 Each cannon has:
 - **Penetration**: Base penetration value
 - **Reload**: Reload time in seconds
+- **Boarding Damage**: Damage dealt during boarding actions (multiplied by ship's cannon count)
 
 ## Assumptions
 

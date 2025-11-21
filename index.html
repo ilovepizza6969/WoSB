@@ -105,7 +105,7 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>World of Sea Battle (Early Access) - DPS Comparator v1.2</h1>
+    <h1>World of Sea Battle (Early Access) - DPS Comparator v1.3</h1>
     <div class="subtitle">Compare cannon damage over a 60‑second window. Formula: <span class="badge">damage = max(0, penetration − armor)</span>, shots/60s = <span class="badge">60 ÷ reload</span>.</div>
 
     <div class="panel">
@@ -223,31 +223,31 @@
     // === Data ================================================================
     const DATA = {
       Light: [
-        { name: '6-pdr rusty', penetration: 13, reload: 10.5 },
-        { name: '6-pdr culverin', penetration: 14, reload: 15.5 },
-        { name: '12-pdr carronade', penetration: 20, reload: 22 },
-        { name: '8-pdr cannon', penetration: 14, reload: 9 },
-        { name: '8-pdr culverin', penetration: 15, reload: 13 },
-        { name: '16-pdr carronade', penetration: 21.5, reload: 19.5 },
+        { name: '6-pdr rusty', penetration: 13, reload: 10.5, boarding: 11 },
+        { name: '6-pdr culverin', penetration: 14, reload: 15.5, boarding: 12 },
+        { name: '12-pdr carronade', penetration: 20, reload: 22, boarding: 18 },
+        { name: '8-pdr cannon', penetration: 14, reload: 9, boarding: 12 },
+        { name: '8-pdr culverin', penetration: 15, reload: 13, boarding: 13 },
+        { name: '16-pdr carronade', penetration: 21.5, reload: 19.5, boarding: 19 },
       ],
       Medium: [
-        { name: '16-pdr cannon', penetration: 14, reload: 12 },
-        { name: '16-pdr culverin', penetration: 15, reload: 17.5 },
-        { name: '24-pdr carronade', penetration: 21.5, reload: 25.5 },
-        { name: '18-pdr cannon', penetration: 15, reload: 10.5 },
-        { name: '18-pdr long cannon', penetration: 16, reload: 15 },
-        { name: '28-pdr carronade', penetration: 23, reload: 22.5 },
-        { name: '20-pdr admiral', penetration: 17, reload: 13.5 },
-        { name: '22-pdr Scorcher', penetration: 19, reload: 26 },
-        { name: '32-pdr Stormbringer', penetration: 25.5, reload: 27.5 },
+        { name: '16-pdr cannon', penetration: 14, reload: 12, boarding: 12 },
+        { name: '16-pdr culverin', penetration: 15, reload: 17.5, boarding: 13 },
+        { name: '24-pdr carronade', penetration: 21.5, reload: 25.5, boarding: 19 },
+        { name: '18-pdr cannon', penetration: 15, reload: 10.5, boarding: 13 },
+        { name: '18-pdr long cannon', penetration: 16, reload: 15, boarding: 14 },
+        { name: '28-pdr carronade', penetration: 23, reload: 22.5, boarding: 21 },
+        { name: '20-pdr admiral', penetration: 17, reload: 13.5, boarding: 15 },
+        { name: '22-pdr Scorcher', penetration: 19, reload: 26, boarding: 17 },
+        { name: '32-pdr Stormbringer', penetration: 25.5, reload: 27.5, boarding: 23 },
       ],
       Heavy: [
-        { name: '32-pdr cannon', penetration: 17.5, reload: 12 },
-        { name: '32-pdr long cannon', penetration: 18.5, reload: 17.5 },
-        { name: '42-pdr carronade', penetration: 27, reload: 26 },
-        { name: '36-pdr inrog', penetration: 20, reload: 16 },
-        { name: '38-pdr jericho', penetration: 22, reload: 30.5 },
-        { name: '48-pdr colossus', penetration: 30, reload: 32 },
+        { name: '32-pdr cannon', penetration: 17.5, reload: 12, boarding: 0 },
+        { name: '32-pdr long cannon', penetration: 18.5, reload: 17.5, boarding: 0 },
+        { name: '42-pdr carronade', penetration: 27, reload: 26, boarding: 0 },
+        { name: '36-pdr inrog', penetration: 20, reload: 16, boarding: 0 },
+        { name: '38-pdr jericho', penetration: 22, reload: 30.5, boarding: 0 },
+        { name: '48-pdr colossus', penetration: 30, reload: 32, boarding: 0 },
       ]
     };
 
@@ -608,6 +608,7 @@
           <th style="min-width:320px;">Cannon</th>
           <th class="num">Penetration</th>
           <th class="num">Reload (s)</th>
+          <th class="num">Boarding Dmg</th>
           <th class="mini">Dmg Curve ${armorStart}→${armorEnd}</th><th class="num">${shipLabel}${dmgLabel} (Armor ${armorStart}–${armorEnd}) <span class="sort-pill">sorted</span></th>`;
 
         const items=DATA[state.size].map(it=>({...it}));
@@ -618,7 +619,8 @@
           const arr=dmgMatrix[idx];
           const avg=arr.reduce((s,x)=>s+x,0)/arr.length;
           let wins=0; for(let i=0;i<arr.length;i++){ if(Math.abs(arr[i]-bestPerArmor[i])<1e-9) wins++; }
-          return {name:it.name, pen:it.penetration, reload:it.reload, avg, wins, arr};
+          const boardingTotal=it.boarding*shipMultiplier;
+          return {name:it.name, pen:it.penetration, reload:it.reload, boarding:boardingTotal, avg, wins, arr};
         }).sort((a,b)=>b.avg-a.avg);
 
         const spark=(vals)=>{
@@ -636,10 +638,12 @@
           if(i===0) tr.classList.add('winner');
           if(i===1) tr.classList.add('runnerup');
           const nameCell=`${r.name}${i===0? ' <span class="winner-badge" title="Best all-around across armor '+armorStart+'–'+armorEnd+'"><span class="emoji">🌊</span> Best Winner</span>' : i===1? ' <span class="runner-badge" title="Second best all-around"><span class="emoji silver-cup">🏆</span> Second Best Winner</span>' : ''}`;
+          const boardingDisplay=r.boarding===0?'TBD':fmt(r.boarding,0);
           tr.innerHTML=`
             <td>${nameCell}</td>
             <td class="num">${fmt(r.pen,2)}</td>
             <td class="num">${fmt(r.reload,2)}</td>
+            <td class="num">${boardingDisplay}</td>
             <td class="mini">${spark(r.arr)}</td><td class="num decide">${meterAvg(r.avg)}</td>`;
           tbody.appendChild(tr);
         });
@@ -652,6 +656,7 @@
         <th style="min-width:320px;">Cannon</th>
         <th class="num">Penetration</th>
         <th class="num">Reload (s)</th>
+        <th class="num">Boarding Dmg</th>
         <th class="num">Shots / 60s</th>
         <th class="num">Damage / Shot</th>
         <th class="num">${shipLabel}${dmgLabel} <span class="sort-pill">sorted</span></th>`;
@@ -660,7 +665,8 @@
         const s60=shotsPer60(it.reload);
         const dpshot=damagePerShot(it.penetration,state.armor);
         const d60=dpshot*s60*shipMultiplier;
-        return {name:it.name, pen:it.penetration, reload:it.reload, s60, dpshot, d60};
+        const boardingTotal=it.boarding*shipMultiplier;
+        return {name:it.name, pen:it.penetration, reload:it.reload, boarding:boardingTotal, s60, dpshot, d60};
       }).sort((a,b)=>b.d60-a.d60);
 
       const maxD=rows.length?rows[0].d60:1;
@@ -671,10 +677,12 @@
         if(i===0) tr.classList.add('winner');
         if(i===1) tr.classList.add('runnerup');
         const nameCell=`${r.name}${i===0? ' <span class="winner-badge" title="Top damage in 60s"><span class="emoji">🏆</span> Best Winner</span>' : i===1? ' <span class="runner-badge" title="Second best in 60s"><span class="emoji silver-cup">🏆</span> Second Best Winner</span>' : ''}`;
+        const boardingDisplay=r.boarding===0?'TBD':fmt(r.boarding,0);
         tr.innerHTML=`
           <td>${nameCell}</td>
           <td class="num">${fmt(r.pen,2)}</td>
           <td class="num">${fmt(r.reload,2)}</td>
+          <td class="num">${boardingDisplay}</td>
           <td class="num">${fmt(r.s60,4)}</td>
           <td class="num">${fmt(r.dpshot,2)}</td>
           <td class="num decide">${meter(r.d60)}</td>`;
