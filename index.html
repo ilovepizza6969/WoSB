@@ -105,7 +105,7 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>World of Sea Battle (Early Access) - DPS Comparator v1.3</h1>
+    <h1>World of Sea Battle (Early Access) - DPS Comparator v1.3.1</h1>
     <div class="subtitle">Compare cannon damage over a 60‑second window. Formula: <span class="badge">damage = max(0, penetration − armor)</span>, shots/60s = <span class="badge">60 ÷ reload</span>.</div>
 
     <div class="panel">
@@ -606,9 +606,10 @@
         const dmgLabel=state.ship?'Avg Ship DPS / 60s':'Avg Dmg / 60s';
         theadRow.innerHTML=`
           <th style="min-width:320px;">Cannon</th>
-          <th class="num">Penetration</th>
+          <th class="num">PEN</th>
           <th class="num">Reload (s)</th>
           <th class="num">Boarding Dmg</th>
+          <th class="num">Boarding DMG / 60s</th>
           <th class="mini">Dmg Curve ${armorStart}→${armorEnd}</th><th class="num">${shipLabel}${dmgLabel} (Armor ${armorStart}–${armorEnd}) <span class="sort-pill">sorted</span></th>`;
 
         const items=DATA[state.size].map(it=>({...it}));
@@ -620,7 +621,8 @@
           const avg=arr.reduce((s,x)=>s+x,0)/arr.length;
           let wins=0; for(let i=0;i<arr.length;i++){ if(Math.abs(arr[i]-bestPerArmor[i])<1e-9) wins++; }
           const boardingTotal=it.boarding*shipMultiplier;
-          return {name:it.name, pen:it.penetration, reload:it.reload, boarding:boardingTotal, avg, wins, arr};
+          const boardingDps60=(it.boarding/it.reload)*60*shipMultiplier;
+          return {name:it.name, pen:it.penetration, reload:it.reload, boarding:boardingTotal, boardingDps60, avg, wins, arr};
         }).sort((a,b)=>b.avg-a.avg);
 
         const spark=(vals)=>{
@@ -639,11 +641,13 @@
           if(i===1) tr.classList.add('runnerup');
           const nameCell=`${r.name}${i===0? ' <span class="winner-badge" title="Best all-around across armor '+armorStart+'–'+armorEnd+'"><span class="emoji">🌊</span> Best Winner</span>' : i===1? ' <span class="runner-badge" title="Second best all-around"><span class="emoji silver-cup">🏆</span> Second Best Winner</span>' : ''}`;
           const boardingDisplay=r.boarding===0?'TBD':fmt(r.boarding,0);
+          const boardingDpsDisplay=r.boarding===0?'TBD':fmt(r.boardingDps60,2);
           tr.innerHTML=`
             <td>${nameCell}</td>
             <td class="num">${fmt(r.pen,2)}</td>
             <td class="num">${fmt(r.reload,2)}</td>
             <td class="num">${boardingDisplay}</td>
+            <td class="num">${boardingDpsDisplay}</td>
             <td class="mini">${spark(r.arr)}</td><td class="num decide">${meterAvg(r.avg)}</td>`;
           tbody.appendChild(tr);
         });
@@ -654,9 +658,10 @@
       const dmgLabel=state.ship?'Ship DPS / 60s':'Damage / 60s';
       theadRow.innerHTML=`
         <th style="min-width:320px;">Cannon</th>
-        <th class="num">Penetration</th>
+        <th class="num">PEN</th>
         <th class="num">Reload (s)</th>
         <th class="num">Boarding Dmg</th>
+        <th class="num">Boarding DMG / 60s</th>
         <th class="num">Shots / 60s</th>
         <th class="num">Damage / Shot</th>
         <th class="num">${shipLabel}${dmgLabel} <span class="sort-pill">sorted</span></th>`;
@@ -666,7 +671,8 @@
         const dpshot=damagePerShot(it.penetration,state.armor);
         const d60=dpshot*s60*shipMultiplier;
         const boardingTotal=it.boarding*shipMultiplier;
-        return {name:it.name, pen:it.penetration, reload:it.reload, boarding:boardingTotal, s60, dpshot, d60};
+        const boardingDps60=(it.boarding/it.reload)*60*shipMultiplier;
+        return {name:it.name, pen:it.penetration, reload:it.reload, boarding:boardingTotal, boardingDps60, s60, dpshot, d60};
       }).sort((a,b)=>b.d60-a.d60);
 
       const maxD=rows.length?rows[0].d60:1;
@@ -678,11 +684,13 @@
         if(i===1) tr.classList.add('runnerup');
         const nameCell=`${r.name}${i===0? ' <span class="winner-badge" title="Top damage in 60s"><span class="emoji">🏆</span> Best Winner</span>' : i===1? ' <span class="runner-badge" title="Second best in 60s"><span class="emoji silver-cup">🏆</span> Second Best Winner</span>' : ''}`;
         const boardingDisplay=r.boarding===0?'TBD':fmt(r.boarding,0);
+        const boardingDpsDisplay=r.boarding===0?'TBD':fmt(r.boardingDps60,2);
         tr.innerHTML=`
           <td>${nameCell}</td>
           <td class="num">${fmt(r.pen,2)}</td>
           <td class="num">${fmt(r.reload,2)}</td>
           <td class="num">${boardingDisplay}</td>
+          <td class="num">${boardingDpsDisplay}</td>
           <td class="num">${fmt(r.s60,4)}</td>
           <td class="num">${fmt(r.dpshot,2)}</td>
           <td class="num decide">${meter(r.d60)}</td>`;
