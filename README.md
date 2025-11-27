@@ -1,4 +1,4 @@
-# World of Sea Battle — DPS Comparator v1.3.1
+# World of Sea Battle — DPS Comparator v1.3.2
 
 A web-based tool for comparing ship cannon damage output in **World of Sea Battle (Early Access)**. Compare cannons by their expected damage over a 60-second window, with support for different ship types and armor configurations. Features an interactive PvP front-load damage analysis graph.
 

@@ -105,13 +105,13 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>World of Sea Battle (Early Access) - DPS Comparator v1.3.1</h1>
+    <h1>World of Sea Battle (Early Access) - DPS Comparator v1.3.2</h1>
     <div class="subtitle">Compare cannon damage over a 60‑second window. Formula: <span class="badge">damage = max(0, penetration − armor)</span>, shots/60s = <span class="badge">60 ÷ reload</span>.</div>
 
     <div class="panel">
       <div class="row">
         <div class="group" id="shipGroup" role="group" aria-label="Ship selector">
-          <div class="group-title">Ship</div>
+          <div class="group-title">Ship Selection</div>
         </div>
         <div class="group" id="sizeGroup" role="group" aria-label="Cannon size selector">
           <div class="group-title">Cannon Size</div>
@@ -140,7 +140,7 @@
       
       <div class="row">
         <div class="group" id="pvpShipGroup" role="group" aria-label="PvP Ship selector">
-          <div class="group-title">Ship</div>
+          <div class="group-title">Ship Selection</div>
         </div>
         <div class="group" id="pvpSizeGroup" role="group" aria-label="PvP Cannon size selector">
           <div class="group-title">Cannon Size</div>
@@ -319,7 +319,20 @@
       // Second line: Number buttons
       for(let a=2;a<=15;a++){
         const b=document.createElement('button');
-        const isActive=a===state.armor;
+        // Determine if this armor number should be active
+        let isActive = false;
+        if (typeof state.armor === 'number') {
+          // Single armor selected
+          isActive = a === state.armor;
+        } else if (state.armor === 'small') {
+          isActive = a >= 2 && a <= 5;
+        } else if (state.armor === 'medium') {
+          isActive = a >= 6 && a <= 10;
+        } else if (state.armor === 'heavy') {
+          isActive = a >= 11 && a <= 15;
+        } else if (state.armor === 'all') {
+          isActive = a >= 2 && a <= 15;
+        }
         b.className='btn'+(isActive?' active':'');
         b.setAttribute('aria-pressed',isActive?'true':'false');
         b.textContent=String(a);
@@ -333,11 +346,11 @@
     function buildShipButtons(){
       shipGroup.querySelectorAll('button.btn, .line-break, .class-label').forEach(b=>b.remove());
       
-      // "All Cannons" button
+      // "One Cannon" button
       const allCannonsBtn=document.createElement('button');
       allCannonsBtn.className='btn'+(state.ship===''?' active':'');
       allCannonsBtn.setAttribute('aria-pressed',state.ship===''?'true':'false');
-      allCannonsBtn.textContent='All Cannons';
+      allCannonsBtn.textContent='One Cannon';
       allCannonsBtn.dataset.ship='';
       shipGroup.appendChild(allCannonsBtn);
 
@@ -356,7 +369,7 @@
       combatLabel.style.letterSpacing='1px';
       combatLabel.style.color='var(--muted)';
       combatLabel.style.marginRight='8px';
-      combatLabel.textContent='Combat:';
+      combatLabel.textContent='Combat Ships';
       shipGroup.appendChild(combatLabel);
 
       // Combat class ships in order: Black Wind, Essex, Anson, Sans Pareil, Victory
@@ -386,7 +399,7 @@
       heavyLabel.style.letterSpacing='1px';
       heavyLabel.style.color='var(--muted)';
       heavyLabel.style.marginRight='8px';
-      heavyLabel.textContent='Heavy:';
+      heavyLabel.textContent='Heavy Ships';
       shipGroup.appendChild(heavyLabel);
 
       // Heavy class ships in order: San Martin, Constitution, Bellona, Redoutable, Apostolov
@@ -407,11 +420,11 @@
     function buildPvpShipButtons(){
       pvpShipGroup.querySelectorAll('button.btn, .line-break, .class-label').forEach(b=>b.remove());
       
-      // "All Cannons" button
+      // "One Cannon" button
       const allCannonsBtn=document.createElement('button');
       allCannonsBtn.className='btn'+(pvpState.ship===''?' active':'');
       allCannonsBtn.setAttribute('aria-pressed',pvpState.ship===''?'true':'false');
-      allCannonsBtn.textContent='All Cannons';
+      allCannonsBtn.textContent='One Cannon';
       allCannonsBtn.dataset.pvpShip='';
       allCannonsBtn.setAttribute('data-pvp-ship', '');
       pvpShipGroup.appendChild(allCannonsBtn);
@@ -431,7 +444,7 @@
       combatLabel.style.letterSpacing='1px';
       combatLabel.style.color='var(--muted)';
       combatLabel.style.marginRight='8px';
-      combatLabel.textContent='Combat:';
+      combatLabel.textContent='Combat Ships';
       pvpShipGroup.appendChild(combatLabel);
 
       // Combat class ships
@@ -462,7 +475,7 @@
       heavyLabel.style.letterSpacing='1px';
       heavyLabel.style.color='var(--muted)';
       heavyLabel.style.marginRight='8px';
-      heavyLabel.textContent='Heavy:';
+      heavyLabel.textContent='Heavy Ships';
       pvpShipGroup.appendChild(heavyLabel);
 
       // Heavy class ships
